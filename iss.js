@@ -1,20 +1,11 @@
-/**
- * Makes a single API request to retrieve the user's IP address.
- * Input:
- *   - A callback (to pass back an error or the IP string)
- * Returns (via Callback):
- *   - An error, if any (nullable)
- *   - The IP address as a string (null if error). Example: "162.245.144.188"
- */
-
 const request = require('request');
+
 const fetchMyIP = function(callback) {
   
   const APIurl = "https://api.ipify.org?format=json";
-  //const APIurl = "https://api.ipify.org";
 
   request(APIurl, (reqError, response, IP) => {
-    //console.log(response.statusCode);
+
     if (reqError) {
       callback(reqError, null);
       return;
@@ -32,14 +23,11 @@ const fetchMyIP = function(callback) {
 };
 
 const fetchMyGEO = function(IP ,callback) {
-  
-  console.log(IP);
+ 
   const APIurl = `https://freegeoip.app/json/${IP}`;
 
-  console.log(APIurl);
-
   request(APIurl, (reqError, response, geoCoor) => {
-    //console.log(response.statusCode);
+    
     if (reqError) {
       callback(reqError, null);
       return;
@@ -48,10 +36,7 @@ const fetchMyGEO = function(IP ,callback) {
       callback(`Status Code ${response.statusCode}`, null);
       return;
     }
-    // if (!JSON.parse(IP).ip) {
-    //   callback("No IP returned", null);
-    //   return;
-    // }
+
     const { latitude, longitude } = JSON.parse(geoCoor);
 
     callback(null, { latitude, longitude });
@@ -59,6 +44,46 @@ const fetchMyGEO = function(IP ,callback) {
 };
 
 
+const fetchISSFlyOverTimes = function(coords ,callback) {
+
+  const APIurl = `https://iss-pass.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`;
+
+  request(APIurl, (reqError, response, flyOver) => {
+
+    if (reqError) {
+      callback(reqError, null);
+      return;
+    }
+    if (response.statusCode !== 200) {
+      callback(`Status Code ${response.statusCode}`, null);
+      return;
+    }
+    callback(null,JSON.parse(flyOver).response);
+  });
+};
+
+const nextISSTimesForMyLocation = function(callback) {
+  let IP = ''; //23.16.13.120';
+  let coords = ''; //{ latitude: 48.4574, longitude: -123.3436 };
 
 
-module.exports = { fetchMyIP , fetchMyGEO};
+  fetchMyIP((error, IP) => {
+    if (error) {
+      return callback(error, null);
+    }
+    fetchMyGEO(IP, (error, coords) => {
+      if (error) {
+        return callback(error, null);
+      }
+      fetchISSFlyOverTimes(coords, (error, flyOver) => {
+        if (error) {
+          return callback(error, null);
+        }
+
+        callback(null, flyOver);
+      });
+    });
+  });
+};
+
+module.exports = { nextISSTimesForMyLocation };
